@@ -12,6 +12,7 @@
     AA.closeModal();
     renderNav();
     AA.renderScreen();
+    AA.renderQuestBar();
     window.scrollTo(0, 0);
   };
 
@@ -41,6 +42,7 @@
       <div class="lvl" title="${Math.floor(S.xp)}/${need} XP"><span>Nv ${S.level}</span><div class="bar"><i style="width:${Math.min(100, S.xp / need * 100)}%"></i></div></div>
       <div class="res"><span title="Oro">🪙 ${AA.fmt(S.gold)}</span><span title="Gemas">💎 ${AA.fmt(S.gems)}</span><span title="Comida">🍖 ${AA.fmt(S.food)}</span>${AA.cloud.user ? '<span title="Sincronizado con Google">☁️</span>' : ''}</div>`;
     document.querySelector('#topbar .brand').onclick = () => AA.go('perfil');
+    AA.renderQuestBar();
   }
 
   function updateTimers() {

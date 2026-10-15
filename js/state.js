@@ -32,6 +32,8 @@
       raid: { targets: [], wins: 0 },
       layout: {},
       decor: [],
+      quests: { step: 0, hidden: false },
+      flags: {},
       stats: { hatched: 0 },
       lastTick: now, nextId: 100,
     };
@@ -41,7 +43,7 @@
     const base = AA.newState();
     for (const k in base) if (s[k] === undefined) s[k] = base[k];
     s.avatar = Object.assign({}, AA.DEFAULT_AVATAR, s.avatar);
-    ['pvp', 'arena', 'platform', 'stats', 'raid'].forEach(k => (s[k] = Object.assign({}, base[k], s[k])));
+    ['pvp', 'arena', 'platform', 'stats', 'raid', 'quests', 'flags'].forEach(k => (s[k] = Object.assign({}, base[k], s[k])));
     // Quita especies que ya no existan en el catálogo.
     s.dragons = s.dragons.filter(d => AA.SPECIES[d.species]);
     s.eggs = s.eggs.filter(e => AA.SPECIES[e.species]);

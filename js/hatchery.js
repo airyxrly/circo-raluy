@@ -111,6 +111,7 @@
       const odds = AA.breedOptions(A.species, B.species, S.level);
       let r = Math.random(), result = odds[odds.length - 1].species;
       for (const o of odds) { if ((r -= o.chance) <= 0) { result = o.species; break; } }
+      AA.flag('bred');
       S.breeding = { speciesA: A.species, speciesB: B.species, result, start: Date.now(), duration: AA.RARITIES[AA.SPECIES[result].rarity].hatch * 2 };
       AA.addXP(8);
       AA.commit();

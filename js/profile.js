@@ -47,6 +47,10 @@
         </div>
       </div>
       ${S.onboarded ? '' : '<div class="center"><button class="btn btn-primary btn-big" data-act="start">¡Ir a mi aldea! 🏡</button></div>'}
+      <section class="card"><h2>🎯 Guía del cuidador</h2>
+        <p>${S.quests.step >= AA.QUESTS.length ? '¡Completada! 🏆' : `Misión ${S.quests.step + 1} de ${AA.QUESTS.length}: <b>${AA.QUESTS[S.quests.step].title}</b>`}</p>
+        ${S.quests.hidden && S.quests.step < AA.QUESTS.length ? '<button class="btn sm" data-act="showGuide">Mostrar la guía</button>' : ''}
+      </section>
       <section class="card"><h2>Cuenta</h2>${accountSection()}</section>
       <section class="card"><h2>Estadísticas</h2>
         <div class="stats-grid">
@@ -84,6 +88,7 @@
         AA.commit();
         AA.go('aldea');
       },
+      showGuide() { S.quests.hidden = false; AA.commit(); },
       login: () => AA.consent.require(() => AA.cloud.login()),
       legal(ds, el, e) { e.preventDefault(); AA.go('legal', { page: ds.id }); },
       sync() { AA.cloud.push().then(() => AA.toast('☁️ Guardado en la nube')).catch(() => AA.toast('No se pudo guardar en la nube')); },

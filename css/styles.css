@@ -321,7 +321,7 @@ div.list-row { cursor: default; }
 .splash.out { opacity: 0; pointer-events: none; }
 .splash-logo { width: min(80vw, 360px); filter: drop-shadow(0 10px 20px rgba(107, 66, 38, .35)); animation: pop .6s; }
 .splash p { font-family: var(--font-title); font-weight: 600; color: var(--wood); font-size: 1.1rem; }
-#toasts { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; width: calc(100% - 32px); max-width: 420px; }
+#toasts { position: fixed; top: 140px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; width: calc(100% - 32px); max-width: 420px; }
 .toast { background: var(--wood); color: #fff6e5; padding: 9px 16px; border-radius: 12px; font-weight: 700; box-shadow: 0 6px 16px rgba(0, 0, 0, .25); animation: pop .2s; transition: opacity .4s, transform .4s; text-align: center; }
 .toast.out { opacity: 0; transform: translateY(-10px); }
 .spin { display: inline-block; animation: spin 2s linear infinite; }
@@ -523,3 +523,15 @@ details.manage .habitat-grid { margin-top: 10px; }
 #nav button.on small { color: #ffd166; }
 h1 { color: #3b2a1a; }
 .sec-title { color: #3b2a1a; }
+
+/* Guía del cuidador (barra de misiones) */
+#questbar { position: sticky; top: 62px; z-index: 19; padding: 6px 12px 0; }
+.qb { display: flex; align-items: center; gap: 10px; background: linear-gradient(90deg, #fff6dd, #fffaf0); border: 2px solid #e0b13e; border-radius: 14px; padding: 8px 10px; box-shadow: 0 4px 12px rgba(44, 26, 14, .18); animation: pop .25s; }
+.qb.done { background: linear-gradient(90deg, #eaf6e2, #fffaf0); border-color: var(--moss); }
+.qb-num { flex-shrink: 0; font: 700 12px var(--font-title); background: #3b2a1a; color: #ffd166; border-radius: 99px; padding: 3px 8px; }
+.qb-text { flex: 1; min-width: 0; }
+.qb-text b { display: block; font-size: .92rem; }
+.qb-text small { display: block; color: var(--muted); line-height: 1.25; }
+.qb .btn { flex-shrink: 0; white-space: nowrap; }
+.qb-x { flex-shrink: 0; border: 0; background: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 4px; }
+@media (max-width: 640px) { #questbar { top: 58px; padding: 6px 8px 0; } .qb-text small { display: none; } }

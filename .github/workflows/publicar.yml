@@ -1,0 +1,55 @@
+# Comprueba el juego y lo publica en GitHub Pages cada vez que se sube a main.
+# Requisito (una sola vez): en GitHub, Settings > Pages > Source: "GitHub Actions".
+name: Comprobar y publicar el juego
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  comprobar:
+    name: Comprobar que el código no tiene errores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Revisar la sintaxis de cada archivo JavaScript
+        run: |
+          for f in js/*.js; do
+            node --check "$f" || exit 1
+          done
+          echo "Todos los archivos JavaScript son válidos."
+      - name: Comprobar que index.html carga todos los scripts que existen
+        run: |
+          for f in $(grep -o 'js/[a-z-]*\.js' index.html); do
+            test -f "$f" || { echo "Falta $f"; exit 1; }
+          done
+          echo "index.html está bien enlazado."
+
+  publicar:
+    name: Publicar en GitHub Pages
+    needs: comprobar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

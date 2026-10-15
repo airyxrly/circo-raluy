@@ -20,9 +20,11 @@ La partida se guarda sola en el dispositivo.
 
 ## Publicar en GitHub Pages
 
+El repositorio incluye un workflow (`.github/workflows/publicar.yml`) que, en cada subida a `main`, revisa que el código no tenga errores y publica el juego automáticamente.
+
 1. Sube el proyecto a tu repositorio (`git push`).
-2. En GitHub ve a **Settings → Pages**, elige la rama `main` y la carpeta `/ (root)` y guarda.
-3. En un par de minutos el juego estará en `https://airyxrly.github.io/circo-raluy/`.
+2. Solo la primera vez: en GitHub ve a **Settings → Pages** y en **Source** elige **GitHub Actions**.
+3. En la pestaña **Actions** verás "Comprobar y publicar el juego". Cuando termine en verde, el juego estará en `https://airyxrly.github.io/circo-raluy/`.
 
 ## Activar el inicio con Gmail, la nube y el modo online
 

@@ -74,6 +74,7 @@
     AA.state.habitats.forEach(h => { total += Math.floor(h.gold); h.gold -= Math.floor(h.gold); });
     if (!total) return AA.toast('Todavía no hay oro para recolectar');
     AA.gain({ gold: total });
+    AA.flag('collected');
     AA.addXP(Math.max(1, Math.floor(total / 50)));
     AA.toast(`+${total} 🪙`);
     AA.commit();
@@ -85,6 +86,7 @@
     if (!g) return AA.toast('Todavía no hay oro aquí');
     h.gold -= g;
     AA.gain({ gold: g });
+    AA.flag('collected');
     AA.addXP(Math.max(1, Math.floor(g / 50)));
     AA.toast(`+${g} 🪙`);
     AA.commit();
@@ -154,6 +156,7 @@
           const c = AA.CROPS.find(x => x.id === p.id);
           if (!AA.spend({ gold: c.cost })) return;
           AA.state.plots[i] = { crop: c.id, start: Date.now() };
+          AA.flag('planted');
           AA.closeModal();
           AA.commit();
         },
@@ -233,6 +236,7 @@
       feed() {
         if (!AA.spend({ food: cost })) return;
         d.hunger = 100;
+        AA.flag('fed');
         AA.dragonProgress(d, 1);
         AA.addXP(2);
         AA.commit();
