@@ -26,6 +26,21 @@ El repositorio incluye un workflow (`.github/workflows/publicar.yml`) que, en ca
 2. Solo la primera vez: en GitHub ve a **Settings → Pages** y en **Source** elige **GitHub Actions**.
 3. En la pestaña **Actions** verás "Comprobar y publicar el juego". Cuando termine en verde, el juego estará en `https://airyxrly.github.io/circo-raluy/`.
 
+## Prueba de experiencia de usuario
+
+Antes de publicar, el workflow abre el juego en un navegador real, en móvil (375 px) y en escritorio, y comprueba que:
+
+- la portada carga en menos de 4 segundos;
+- el aviso de privacidad se lee y se puede cerrar;
+- ninguna pantalla está vacía ni se sale del ancho del móvil;
+- los textos de los botones tienen contraste suficiente;
+- al pulsar los botones no aparece ningún error;
+- la partida se conserva al recargar.
+
+Si algo falla, el juego **no se publica**. Las capturas de cada pantalla quedan en **Actions → la ejecución → capturas-experiencia**.
+
+Para probarlo en tu ordenador: `npm install --no-save playwright` y `npx playwright install chromium`, y después `node tests/experiencia.mjs`.
+
 ## Activar el inicio con Gmail, la nube y el modo online
 
 Todo está programado, pero necesita un proyecto de Firebase (gratis para empezar):
@@ -85,4 +100,5 @@ js/data.js          especies, elementos, edificios y fórmulas
 js/art.js           dibujos (dragones, huevos, cuidador, logo, portadas, cartas)
 js/villagemap.js    mapa isométrico de la aldea
 js/*.js             una pantalla o sistema por archivo (ver DISENO.md)
+tests/experiencia.mjs  prueba automática de experiencia de usuario
 ```

@@ -1,25 +1,28 @@
-# Comprueba el juego y lo publica en GitHub Pages cada vez que se sube a main.
+# Comprueba el juego, prueba la experiencia de usuario en un navegador real
+# (móvil y escritorio) y lo publica en GitHub Pages cada vez que se sube a main.
+# Si algo falla, NO se publica y las capturas quedan en la pestaña Actions.
 # Requisito (una sola vez): en GitHub, Settings > Pages > Source: "GitHub Actions".
 name: Comprobar y publicar el juego
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Una sola publicación a la vez y sin cortar una que ya esté en marcha.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   comprobar:
     name: Comprobar que el código no tiene errores
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,29 +30,64 @@ jobs:
           node-version: 20
       - name: Revisar la sintaxis de cada archivo JavaScript
         run: |
-          for f in js/*.js; do
-            node --check "$f" || exit 1
+          for f in js/*.js tests/*.mjs; do
+            node --check "$f" || { echo "::error file=$f::Error de sintaxis"; exit 1; }
           done
           echo "Todos los archivos JavaScript son válidos."
       - name: Comprobar que index.html carga todos los scripts que existen
         run: |
           for f in $(grep -o 'js/[a-z-]*\.js' index.html); do
-            test -f "$f" || { echo "Falta $f"; exit 1; }
+            test -f "$f" || { echo "::error file=index.html::Falta $f"; exit 1; }
           done
           echo "index.html está bien enlazado."
 
-  publicar:
-    name: Publicar en GitHub Pages
+  experiencia:
+    name: Probar la experiencia de usuario (móvil y escritorio)
     needs: comprobar
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar el navegador de pruebas
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+      - name: Jugar como un usuario y buscar problemas
+        run: node tests/experiencia.mjs .
+      - name: Guardar capturas de cada pantalla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-experiencia
+          path: tests/capturas/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publicar:
+    name: Publicar en GitHub Pages
+    needs: experiencia
+    # Solo se publica desde main (no desde pull requests).
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Preparar solo los archivos del juego
+        run: |
+          mkdir _site
+          cp -r index.html css js _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
