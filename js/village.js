@@ -10,7 +10,7 @@
   }
 
   function dragonChip(d) {
-    return `<button class="dchip" data-act="dragon" data-id="${d.id}">${AA.dragonSVG(d.species, d.level)}<span>${esc(d.name)} · Nv ${d.level}</span>${needIcons(d)}</button>`;
+    return `<button class="dchip" data-act="dragon" data-id="${d.id}">${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}<span>${esc(d.name)} · Nv ${d.level}</span>${needIcons(d)}</button>`;
   }
 
   function habitatCard(h) {
@@ -132,7 +132,7 @@
       const cands = AA.state.dragons.filter(d => d.habitatId !== h.id && AA.canLiveIn(d, h));
       if (!cands.length) return AA.toast(`No tienes otros dragones de ${AA.ELEMENTS[h.type].name} para este hábitat`);
       const m = AA.modal(`<h2>Llevar un dragón a ${AA.HABITATS[h.type].name}</h2><div class="pick-grid">${cands.map(d =>
-        `<button class="dchip" data-act="pick" data-id="${d.id}">${AA.dragonSVG(d.species, d.level)}<span>${esc(d.name)} · Nv ${d.level}</span><small>${d.habitatId ? 'Mover' : 'En el nido'}</small></button>`).join('')}</div>`);
+        `<button class="dchip" data-act="pick" data-id="${d.id}">${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}<span>${esc(d.name)} · Nv ${d.level}</span><small>${d.habitatId ? 'Mover' : 'En el nido'}</small></button>`).join('')}</div>`);
       AA.bind(m, {
         pick(p) {
           AA.dragonById(p.id).habitatId = h.id;
@@ -201,10 +201,10 @@
     const home = d.habitatId ? AA.HABITATS[AA.habitatById(d.habitatId).type].name : 'En el nido';
     const m = AA.modal(`
       <div class="dm-top el-${sp.elements[0]}">
-        <div class="dm-art">${AA.dragonSVG(d.species, d.level)}</div>
+        <div class="dm-art">${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}</div>
         <div>
           <h2>${esc(d.name)}</h2>
-          <p>${sp.name} ${AA.rarBadge(sp.rarity)}</p>
+          <p>${sp.name} ${AA.rarBadge(sp.rarity)}${d.shiny ? ' <span class="rar rar-mitico">🌈 Iridiscente</span>' : ''}</p>
           <p>${AA.elBadges(sp.elements)}</p>
           <p>Nivel <b>${d.level}</b> · ${AA.STAGES[AA.stageOf(d.level)]} · ${home}</p>
           ${max ? '<p class="muted">Nivel máximo</p>' : `<div class="pips" title="Comidas para subir de nivel">${pips}</div>`}

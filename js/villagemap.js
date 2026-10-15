@@ -18,6 +18,7 @@
     const list = Object.keys(AA.BUILDINGS).map(id => ({ key: 'b:' + id, kind: 'b', id, size: 2 }));
     S.habitats.forEach(h => list.push({ key: 'h:' + h.id, kind: 'h', id: h.id, size: 2 }));
     S.plots.forEach((p, i) => list.push({ key: 'p:' + i, kind: 'p', id: i, size: 1 }));
+    (S.decor || []).forEach(d => list.push({ key: 'd:' + d.id, kind: 'd', id: d.id, size: 1 }));
     return list;
   }
 
@@ -133,7 +134,7 @@
     ds.forEach((dr, i) => {
       const [dx, dy] = spots[i % spots.length];
       const w = 74;
-      s += `<g class="map-dragon" style="animation-delay:-${(i * 1.3).toFixed(1)}s">${AA.dragonSVG(dr.species, dr.level, { x: f.cx + dx - w / 2, y: f.cy + dy - w * 0.78, w, h: w * 0.875, flip: i % 2 === 1 })}</g>`;
+      s += `<g class="map-dragon" style="animation-delay:-${(i * 1.3).toFixed(1)}s">${AA.dragonSVG(dr.species, dr.level, { shiny: dr.shiny, x: f.cx + dx - w / 2, y: f.cy + dy - w * 0.78, w, h: w * 0.875, flip: i % 2 === 1 })}</g>`;
     });
     const g = Math.floor(h.gold);
     if (g >= 10) s += `<g class="coin-bubble" data-collect="${h.id}"><circle cx="${f.cx}" cy="${f.cy - 92}" r="17" fill="#fffaf0" stroke="#c79400" stroke-width="3"/><text x="${f.cx}" y="${f.cy - 86}" text-anchor="middle" font-size="16">🪙</text></g>`;
@@ -164,6 +165,46 @@
     }
     return s;
   }
+
+  // Decoraciones compradas: dibujadas con la base en (x, y).
+  function drawDecor(type, x, y) {
+    const sh = `<ellipse cx="${x}" cy="${y}" rx="18" ry="7" fill="rgba(0,0,0,.22)"/>`;
+    switch (type) {
+      case 'farol':
+        return sh + `<rect x="${x - 2}" y="${y - 46}" width="4" height="46" fill="#2c1a0e"/><path d="M${x - 8},${y - 46} h16 l-3,-12 h-10Z" fill="#3b2a1a"/><rect x="${x - 6}" y="${y - 56}" width="12" height="10" fill="#ffd166"/><circle cx="${x}" cy="${y - 51}" r="12" fill="#ffd166" opacity=".25"/>`;
+      case 'jardin':
+        return `<ellipse cx="${x}" cy="${y - 2}" rx="24" ry="10" fill="#5a3820"/>` + [[-14, -4, '#ff8fab'], [-4, -8, '#ffd166'], [8, -5, '#cdb4db'], [16, -2, '#ffffff'], [0, 0, '#f4a261'], [-10, 2, '#ffd166']].map(([dx, dy, c]) =>
+          `<path d="M${x + dx},${y + dy} v-8" stroke="#3f8a3a" stroke-width="2"/><circle cx="${x + dx}" cy="${y + dy - 10}" r="4" fill="${c}" stroke="${AA.shade(c, -0.25)}" stroke-width=".8"/>`).join('');
+      case 'antorcha':
+        return sh + `<path d="M${x - 3},${y} L${x - 2},${y - 40} h4 L${x + 3},${y}Z" fill="#6b4226"/><path d="M${x - 1},${y - 30} l2,-4 M${x - 1},${y - 20} l2,-4" stroke="#7fd1ec" stroke-width="1.5"/>` +
+          `<path d="M${x},${y - 40} C${x - 9},${y - 48} ${x - 4},${y - 58} ${x + 1},${y - 64} C${x + 2},${y - 56} ${x + 8},${y - 54} ${x + 6},${y - 46} C${x + 6},${y - 42} ${x + 3},${y - 40} ${x},${y - 40}Z" fill="#ff8a2a"/><path d="M${x},${y - 42} c-3,-4 -1,-8 1,-11 c1,4 3,4 3,7 c0,3 -2,4 -4,4Z" fill="#ffe066"/>`;
+      case 'estandarte':
+        return sh + `<rect x="${x - 2}" y="${y - 70}" width="4" height="70" fill="#3b2a1a"/><path d="M${x + 2},${y - 66} h24 v34 l-12,-7 l-12,7Z" fill="#c0392b" stroke="#6b1e14" stroke-width="1.5"/><path d="M${x + 14},${y - 58} l5,5 l-5,8 l-5,-8Z" fill="#e0b13e"/><circle cx="${x}" cy="${y - 72}" r="3" fill="#e0b13e"/>`;
+      case 'hoguera':
+        return `<ellipse cx="${x}" cy="${y}" rx="20" ry="8" fill="#5e5040"/>` + [-10, -4, 4, 10].map(dx => `<circle cx="${x + dx}" cy="${y - 1}" r="4" fill="#8a7a66"/>`).join('') +
+          `<path d="M${x - 12},${y - 4} L${x + 12},${y - 10} M${x - 12},${y - 10} L${x + 12},${y - 4}" stroke="#6b4226" stroke-width="5" stroke-linecap="round"/>` +
+          `<path d="M${x - 8},${y - 8} C${x - 12},${y - 22} ${x - 2},${y - 28} ${x},${y - 38} C${x + 4},${y - 26} ${x + 12},${y - 22} ${x + 8},${y - 8}Z" fill="#ff7a1a"/><path d="M${x - 4},${y - 9} C${x - 6},${y - 18} ${x},${y - 22} ${x + 1},${y - 28} C${x + 3},${y - 20} ${x + 6},${y - 16} ${x + 4},${y - 9}Z" fill="#ffe066"/><circle cx="${x}" cy="${y - 20}" r="22" fill="#ff9a3c" opacity=".15"/>`;
+      case 'pozo':
+        return sh + `<ellipse cx="${x}" cy="${y - 10}" rx="16" ry="7" fill="#2a6f97"/><path d="M${x - 16},${y - 10} v10 a16,7 0 0 0 32,0 v-10 a16,7 0 0 1 -32,0Z" fill="#9b8a76" stroke="#5e5040" stroke-width="1.5"/>` +
+          `<path d="M${x - 14},${y - 12} V${y - 40} M${x + 14},${y - 12} V${y - 40}" stroke="#6b4226" stroke-width="3"/><path d="M${x - 20},${y - 38} L${x},${y - 50} L${x + 20},${y - 38}Z" fill="#8b3a2b" stroke="#5a1e14" stroke-width="1.5"/>`;
+      case 'menhir':
+        return sh + `<path d="M${x - 10},${y} L${x - 12},${y - 40} Q${x},${y - 62} ${x + 11},${y - 42} L${x + 10},${y}Z" fill="#7d868e" stroke="#4f565c" stroke-width="1.5"/>` +
+          `<path d="M${x - 3},${y - 40} l3,-6 l3,6 M${x},${y - 30} v-8 M${x - 4},${y - 22} h8 M${x - 2},${y - 14} l4,-4" stroke="#7df9ff" stroke-width="1.6" fill="none"/><ellipse cx="${x}" cy="${y - 28}" rx="16" ry="24" fill="#7df9ff" opacity=".1"/>`;
+      case 'fuente':
+        return `<ellipse cx="${x}" cy="${y - 4}" rx="26" ry="11" fill="#9b8a76" stroke="#5e5040" stroke-width="2"/><ellipse cx="${x}" cy="${y - 6}" rx="21" ry="8" fill="#5fb4e8"/>` +
+          `<rect x="${x - 4}" y="${y - 34}" width="8" height="28" fill="#b9a98f" stroke="#5e5040" stroke-width="1.5"/><ellipse cx="${x}" cy="${y - 34}" rx="11" ry="4" fill="#b9a98f" stroke="#5e5040" stroke-width="1.5"/>` +
+          `<path d="M${x},${y - 38} Q${x - 12},${y - 52} ${x - 16},${y - 10} M${x},${y - 38} Q${x + 12},${y - 52} ${x + 16},${y - 10}" stroke="#bfe6ff" stroke-width="2" fill="none" opacity=".9"/>`;
+      case 'arbol':
+        return sh + `<path d="M${x - 5},${y} L${x - 3},${y - 30} L${x + 3},${y - 30} L${x + 5},${y}Z" fill="#6b4226"/>` +
+          `<circle cx="${x - 12}" cy="${y - 40}" r="14" fill="#2f6b3a"/><circle cx="${x + 12}" cy="${y - 42}" r="15" fill="#3f8a4a"/><circle cx="${x}" cy="${y - 56}" r="17" fill="#4fa046"/>` +
+          '<g fill="#fff6a8">' + [[-14, -44], [10, -50], [2, -62], [16, -36], [-6, -52]].map(([dx, dy]) => `<circle cx="${x + dx}" cy="${y + dy}" r="1.8"/>`).join('') + '</g>';
+      case 'estatua':
+        return sh + `<path d="M${x - 16},${y} L${x - 14},${y - 12} H${x + 14} L${x + 16},${y}Z" fill="#9b8a76" stroke="#5e5040" stroke-width="1.5"/>` +
+          `<g style="filter:grayscale(1) brightness(1.15) contrast(.9)">${AA.dragonSVG('fenix', 12, { x: x - 26, y: y - 56, w: 52, h: 46 })}</g>`;
+    }
+    return '';
+  }
+  AA.decorSVG = type => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 90" class="decor-svg">${drawDecor(type, 40, 82)}</svg>`;
 
   function decorations(grid) {
     let s = '';
@@ -211,6 +252,7 @@
       s += `<g class="map-item${sel}" data-key="${it.key}">`;
       if (it.kind === 'h') s += drawHabitat(AA.habitatById(it.id), f);
       else if (it.kind === 'b') s += drawBuilding(it.id, f);
+      else if (it.kind === 'd') s += drawDecor(AA.state.decor.find(x => x.id === it.id).type, f.cx, f.bottom[1] - 10);
       else s += drawPlot(it.id, f);
       if (sel) s += `<polygon points="${poly([f.top, f.right, f.bottom, f.left])}" fill="none" stroke="#ffe066" stroke-width="4" stroke-dasharray="10 6"/>`;
       s += '</g>';
@@ -268,6 +310,21 @@
     const [kind, id] = item.dataset.key.split(':');
     if (kind === 'h') AA.habitatModal(id);
     else if (kind === 'p') AA.plotAction(+id);
+    else if (kind === 'd') {
+      const dec = AA.state.decor.find(x => x.id === id);
+      const D = AA.DECORATIONS[dec.type];
+      const m = AA.modal(`<div class="center">${AA.decorSVG(dec.type)}<h2>${D.name}</h2><p class="muted">Cada decoración da +1% de oro a todos tus hábitats (máximo +20%). Ahora: +${Math.round((AA.decorBonus() - 1) * 100)}%.</p>
+        <div class="row center-row"><button class="btn" data-close>Cerrar</button><button class="btn btn-danger" data-act="sell">Vender (${AA.costLabel({ gold: Math.round((D.price.gold || D.price.gems * 50) / 3) })})</button></div></div>`);
+      AA.bind(m, {
+        sell() {
+          AA.state.decor = AA.state.decor.filter(x => x.id !== id);
+          delete AA.state.layout['d:' + id];
+          AA.gain({ gold: Math.round((D.price.gold || D.price.gems * 50) / 3) });
+          AA.closeModal();
+          AA.commit();
+        },
+      });
+    }
     else {
       const b = AA.BUILDINGS[id];
       if (AA.state.level < b.unlock) return AA.toast(`🔒 ${b.name} se desbloquea a nivel ${b.unlock}`);

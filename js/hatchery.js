@@ -39,7 +39,7 @@
     if (!elig.find(d => d.id === sel.a)) sel.a = elig[0].id;
     if (!elig.find(d => d.id === sel.b) || sel.b === sel.a) sel.b = (elig.find(d => d.id !== sel.a) || {}).id;
     const pick = (slot, cur) => `<div class="breed-pick"><b>${slot === 'a' ? 'Padre 1' : 'Padre 2'}</b><div class="dragon-row">${elig.map(d =>
-      `<button class="dchip ${d.id === cur ? 'on' : ''}" data-act="sel" data-slot="${slot}" data-id="${d.id}" ${(slot === 'a' ? sel.b : sel.a) === d.id ? 'disabled' : ''}>${AA.dragonSVG(d.species, d.level)}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div></div>`;
+      `<button class="dchip ${d.id === cur ? 'on' : ''}" data-act="sel" data-slot="${slot}" data-id="${d.id}" ${(slot === 'a' ? sel.b : sel.a) === d.id ? 'disabled' : ''}>${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div></div>`;
     const A = AA.dragonById(sel.a), B = AA.dragonById(sel.b);
     const odds = AA.breedOptions(A.species, B.species, S.level).sort((x, y) => y.chance - x.chance);
     return `${pick('a', sel.a)}${pick('b', sel.b)}
@@ -141,8 +141,8 @@
     const m = AA.modal(`<div class="center hatch-box"><div class="hatch-stage">${AA.eggSVG(e.species, { crack: true, cls: 'egg-svg shake-hard' })}</div><h2>¡Algo se mueve!</h2></div>`, { locked: true });
     setTimeout(() => {
       const home = d.habitatId ? `Vivirá en: <b>${AA.HABITATS[AA.habitatById(d.habitatId).type].name}</b>` : `<span class="warn-text">No hay hábitat de ${AA.ELEMENTS[sp.elements[0]].name} con sitio: se queda en el nido.</span>`;
-      m.innerHTML = `<div class="center hatch-box"><div class="hatch-stage pop">${AA.dragonSVG(d.species, 1)}</div>
-        <h2>¡Ha nacido ${sp.name}!</h2>${isNew ? '<p class="new-tag">✨ ¡Nueva especie en tu dragonario!</p>' : ''}
+      m.innerHTML = `<div class="center hatch-box"><div class="hatch-stage pop">${AA.dragonSVG(d.species, 1, { shiny: d.shiny })}</div>
+        <h2>¡Ha nacido ${sp.name}!</h2>${d.shiny ? '<p class="new-tag shiny-tag">🌈 ¡Variante iridiscente! (3%)</p>' : ''}${isNew ? '<p class="new-tag">✨ ¡Nueva especie en tu dragonario!</p>' : ''}
         <p>${AA.rarBadge(sp.rarity)} ${AA.elBadges(sp.elements)}</p><p>${home}</p>
         <label class="lbl">Ponle nombre</label><input class="input" maxlength="16" value="${esc(d.name)}">
         <button class="btn btn-primary" data-act="ok">¡Bienvenido!</button></div>`;

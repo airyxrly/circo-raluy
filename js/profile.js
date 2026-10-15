@@ -43,6 +43,7 @@
           <label class="lbl">Ropa</label>${seg('ropa', O.ropa, a.ropa)}
           <label class="lbl">Color de ropa</label>${swatches('colorRopa', O.colorRopa, a.colorRopa)}
           <label class="lbl">Accesorio</label>${seg('accesorio', O.accesorio, a.accesorio)}
+          <label class="lbl">Marcas</label>${seg('marcas', O.marcas, a.marcas)}
         </div>
       </div>
       ${S.onboarded ? '' : '<div class="center"><button class="btn btn-primary btn-big" data-act="start">¡Ir a mi aldea! 🏡</button></div>'}
@@ -70,7 +71,7 @@
       flip(ds) { a[ds.k] = !a[ds.k]; AA.commit(); },
       random() {
         const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-        ['genero', 'pelo', 'ropa', 'accesorio'].forEach(k => (a[k] = pick(O[k])[0]));
+        ['genero', 'pelo', 'ropa', 'accesorio', 'marcas'].forEach(k => (a[k] = pick(O[k])[0]));
         ['piel', 'colorPelo', 'ojos', 'colorRopa'].forEach(k => (a[k] = pick(O[k])));
         a.pecas = Math.random() < 0.5;
         a.barba = a.genero !== 'chica' && Math.random() < 0.3;

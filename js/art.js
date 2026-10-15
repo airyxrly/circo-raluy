@@ -125,6 +125,31 @@
     return '';
   }
 
+  // Membrana del ala cercana según el tipo: membrana, rasgada, plumas o cristal.
+  function nearWing(type, id, dk, c2) {
+    const veins = `<path d="M66,30 Q50,40 34,58 M66,30 Q44,30 22,34 M58,48 Q44,50 28,58 M48,16 Q36,26 26,40" stroke="${dk}" stroke-width=".6" fill="none" opacity=".35"/>`;
+    if (type === 'rasgada') {
+      return `<path fill-rule="evenodd" d="M82,68 L66,30 L48,16 L14,22 L22,29 L15,34 Q24,38 16,46 L25,48 L21,55 Q30,55 30,62 L37,57 L40,65 Q50,62 64,74Z M34,34 l5,3 l-4,4Z M44,50 l4,1 l-2,4Z M24,26 l4,1 l-3,3Z" fill="url(#${id}w)" stroke="${dk}" stroke-width="1.2" stroke-linejoin="round"/>` + veins;
+    }
+    if (type === 'cristal') {
+      return `<path d="M82,68 L66,30 L48,16 L14,22 L24,34 L16,46 L28,52 L30,62 L46,60 L64,74Z" fill="url(#${id}w)" stroke="${dk}" stroke-width="1.2" stroke-linejoin="round"/>` +
+        '<g fill="#ffffff" stroke="#ffffff" stroke-width=".6" stroke-opacity=".8"><path d="M48,16 L14,22 L30,30Z" fill-opacity=".4"/><path d="M48,16 L16,46 L36,40Z" fill-opacity=".22"/><path d="M48,16 L30,62 L46,48Z" fill-opacity=".34"/><path d="M66,30 L46,60 L58,46Z" fill-opacity=".18"/></g>';
+    }
+    let s = `<path d="M82,68 L66,30 L48,16 L14,22 Q26,32 16,46 Q30,50 30,62 Q48,60 64,74Z" fill="url(#${id}w)" stroke="${dk}" stroke-width="1.2" stroke-linejoin="round"/>` + veins;
+    if (type === 'plumas') {
+      const edge = [[14, 22], [16, 46], [30, 62], [46, 66]];
+      for (let i = 0; i < edge.length - 1; i++) {
+        for (let k = 0; k < 4; k++) {
+          const t = k / 4;
+          const x = edge[i][0] + (edge[i + 1][0] - edge[i][0]) * t, y = edge[i][1] + (edge[i + 1][1] - edge[i][1]) * t;
+          const ang = Math.atan2(y - 40, x - 58) * 57.3;
+          s += `<ellipse cx="${x}" cy="${y}" rx="8" ry="2.8" transform="rotate(${ang.toFixed(1)} ${x} ${y})" fill="${k % 2 ? '#ffffff' : shade(c2, 0.4)}" stroke="${dk}" stroke-width=".5"/>`;
+        }
+      }
+    }
+    return s;
+  }
+
   // Marcas del cuerpo (rayas o manchas) recortadas a la silueta.
   function bodyMarks(style, id, dk) {
     if (style === 1) return `<g clip-path="url(#${id}bc)" fill="none" stroke="${dk}" stroke-width="3.4" opacity=".32"><path d="M62,62 Q58,88 64,116"/><path d="M74,60 Q70,90 76,118"/><path d="M86,62 Q84,84 90,108"/></g>`;
@@ -166,7 +191,8 @@
     const body = 'M48,94 C46,76 60,64 80,63 C98,62 110,74 108,92 C106,108 92,116 76,116 C60,116 50,108 48,94Z';
 
     const box = opts.w ? ` x="${opts.x || 0}" y="${opts.y || 0}" width="${opts.w}" height="${opts.h || opts.w}"` : '';
-    const style = opts.silhouette ? ' style="filter:brightness(0) opacity(.28)"' : '';
+    const style = opts.silhouette ? ' style="filter:brightness(0) opacity(.28)"' : opts.shiny ? ' style="filter:hue-rotate(150deg) saturate(1.35) brightness(1.05)"' : '';
+    const wt = els.includes('oscuridad') ? 'rasgada' : els.includes('hielo') ? 'cristal' : (els.includes('aire') || els.includes('luz')) ? 'plumas' : 'membrana';
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 140"${box} class="${opts.cls || 'dragon-svg'}"${style}>`;
     s += '<defs>' +
       lin(`${id}b`, [[0, lt], [0.55, c1], [1, dk]]) +
@@ -179,6 +205,8 @@
       `<pattern id="${id}s" width="7" height="5" patternUnits="userSpaceOnUse"><path d="M0,5 Q3.5,0 7,5" fill="none" stroke="${dk}" stroke-width=".6" opacity=".35"/></pattern>` +
       glowFilter(`${id}g`) +
       `<clipPath id="${id}bc"><path d="${body}"/></clipPath>` +
+      `<clipPath id="${id}tc"><path d="M56,98 C40,102 26,112 16,104 C7,97 13,85 6,74 C16,80 24,90 23,97 C29,103 41,99 54,90Z"/></clipPath>` +
+      lin(`${id}cl`, [[0, '#f6efe0'], [1, '#6b5a46']]) +
       `<filter id="${id}bl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>` +
       '</defs>';
     s += `<g${opts.flip ? ' transform="translate(160,0) scale(-1,1)"' : ''}>`;
@@ -194,6 +222,7 @@
     // cola
     const tail = 'M56,98 C40,102 26,112 16,104 C7,97 13,85 6,74 C16,80 24,90 23,97 C29,103 41,99 54,90Z';
     s += `<path d="${tail}" fill="url(#${id}b)" stroke="${dk}" stroke-width="1.4"/><path d="${tail}" fill="url(#${id}s)"/>`;
+    s += `<path d="M0,98 C24,112 44,106 60,98 L60,130 L0,130Z" fill="${dk}" opacity=".3" clip-path="url(#${id}tc)"/>`;
     [[44, 99], [33, 104], [23, 100]].forEach(([x, y]) => (s += `<path d="M${x - 3},${y} L${x},${y - 6 * sf} L${x + 3},${y}Z" fill="${shade(c2, -0.1)}" stroke="${dk}" stroke-width=".7"/>`));
     s += `<g transform="translate(7,75) rotate(-35)">${tailTip(e1, id, c2)}</g>`;
 
@@ -216,6 +245,7 @@
     s += `<g transform="translate(78,92) scale(${look.bulk}) translate(-78,-92)">`;
     s += `<path d="${body}" fill="url(#${id}b)" stroke="${dk}" stroke-width="1.5"/><path d="${body}" fill="url(#${id}s)"/>`;
     s += bodyMarks(look.marks, id, dk);
+    s += `<path d="M40,96 C58,111 90,116 116,93 L116,130 L40,130Z" fill="${dk}" opacity=".32" clip-path="url(#${id}bc)"/>`;
     s += `<path d="M90,78 C101,85 105,97 99,108 C93,114 81,116 70,114 C83,108 93,96 90,78Z" fill="url(#${id}be)"/>`;
     s += `<path d="M93,88 q6,2 10,0 M92,96 q6,2 10,-1 M88,104 q5,2 9,-1" stroke="${shade(c2, -0.3)}" stroke-width=".8" fill="none"/>`;
     [[62, 66], [72, 63], [82, 63]].forEach(([x, y]) => (s += `<path d="M${x - 4},${y + 2} L${x},${y - 6 * sf} L${x + 4},${y + 2}Z" fill="${shade(c2, -0.1)}" stroke="${dk}" stroke-width=".7"/>`));
@@ -225,7 +255,8 @@
     // patas cercanas
     s += `<path d="M54,92 C46,100 48,114 58,120 C56,124 58,126 62,126 L72,126 L68,121 C66,116 66,110 70,104 C72,98 66,90 54,92Z" fill="url(#${id}b)" stroke="${dk}" stroke-width="1.4"/>`;
     s += `<path d="M88,98 C92,106 92,114 88,122 L98,124 L95,118 C99,110 100,102 96,96Z" fill="url(#${id}b)" stroke="${dk}" stroke-width="1.4"/>`;
-    s += '<path d="M60,126 l-2.5,2 l4,0Z M65,126 l-1.5,2.4 l3.5,-.4Z M90,123 l-2.5,2 l4,0Z M95,124 l-1.5,2.4 l3.5,-.4Z" fill="#f3ead7"/>';
+    s += `<path d="M57,90 C50,98 50,110 58,118" stroke="${dk}" stroke-width="3" fill="none" opacity=".25" stroke-linecap="round"/>`;
+    s += `<path d="M60,125.5 l-4.5,3 l6.5,-.6Z M65.5,125.5 l-2.5,3.4 l5,-1Z M70.5,125.5 l-.5,3.4 l3.5,-1.6Z M90,122.5 l-4.5,3 l6.5,-.6Z M95.5,123 l-2.5,3.4 l5,-1Z" fill="url(#${id}cl)" stroke="#3b2a1a" stroke-width=".4"/>`;
 
     // cabeza
     s += `<g transform="translate(${nx},${ny}) scale(${P.head}) translate(-112,-40)">`;
@@ -235,6 +266,8 @@
       ? 'M104,38 C104,25 116,20 128,23 C137,25 144,30 148,36 C150,40 147,44 142,45 L128,48 C116,50 105,47 104,38Z'
       : 'M104,38 C104,26 116,20 128,23 C138,26 146,30 152,36 C154,40 151,44 146,45 L130,48 C118,50 106,48 104,38Z';
     s += `<path d="${skull}" fill="url(#${id}b)" stroke="${dk}" stroke-width="1.4"/>`;
+    s += `<clipPath id="${id}hc"><path d="${skull}"/></clipPath><path d="M100,40 C114,47 138,48 156,40 L156,54 L100,54Z" fill="${dk}" opacity=".3" clip-path="url(#${id}hc)"/>`;
+    if (stage === 'adulto') s += `<path d="M112,44 L104,50 L114,47Z M120,47 L114,54 L123,48Z" fill="${shade(c2, -0.1)}" stroke="${dk}" stroke-width=".7"/>`;
     s += `<path d="M118,46 C126,47 136,46 ${stage === 'bebe' ? 142 : 146},45 L130,48 C124,49 120,48 118,46Z" fill="url(#${id}be)"/>`;
     s += `<path d="M132,45 Q142,45 ${stage === 'bebe' ? 145 : 149},41" stroke="${dk}" stroke-width="1.1" fill="none" stroke-linecap="round"/>`;
     if (stage === 'adulto') s += '<path d="M138,45 l1.4,2.6 l1.4,-2.6Z" fill="#fff"/>';
@@ -251,8 +284,7 @@
     s += '</g>';
 
     // ala cercana
-    s += `<g transform="translate(82,68) scale(${P.wing}) translate(-82,-68)">` +
-      `<path d="M82,68 L66,30 L48,16 L14,22 Q26,32 16,46 Q30,50 30,62 Q48,60 64,74Z" fill="url(#${id}w)" stroke="${dk}" stroke-width="1.2" stroke-linejoin="round"/>` +
+    s += `<g transform="translate(82,68) scale(${P.wing}) translate(-82,-68)">` + nearWing(wt, id, dk, c2) +
       wingMarks(e2) +
       `<path d="M48,16 L14,22 M48,16 L16,46 M48,16 L30,62" stroke="${dk}" stroke-width="1.3" fill="none" stroke-linecap="round"/>` +
       `<path d="M82,68 L66,30 L48,16" stroke="${dk}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
@@ -314,6 +346,8 @@
       }
       case 'mono':
         return `<circle cx="100" cy="46" r="20" fill="${hair}" stroke="${hairD}" stroke-width="1.5"/><path d="M86,42 q14,-10 28,0" stroke="${hairD}" stroke-width="1.5" fill="none"/>`;
+      case 'coleta':
+        return `<path d="M116,50 Q172,56 162,130 Q158,172 140,194 Q150,152 141,112 Q134,80 114,64Z" fill="${hair}" stroke="${hairD}" stroke-width="1.2"/><path d="M150,90 Q154,130 146,170" stroke="${hairD}" stroke-width="1.2" fill="none" opacity=".6"/>`;
       case 'trenzas':
         return `<path d="M56,96 Q52,52 100,46 Q148,52 144,96 L144,130 L56,130Z" fill="${hairD}"/>`;
     }
@@ -352,7 +386,15 @@
         return s;
       }
       case 'mono':
-        return `<path d="M56,104 Q54,52 100,50 Q146,52 144,104 Q132,80 100,78 Q68,80 56,104Z" fill="${hair}"/>` + strands;
+      case 'coleta':
+        return `<path d="M56,104 Q54,52 100,50 Q146,52 144,104 Q132,80 100,78 Q68,80 56,104Z" fill="${hair}"/>` + strands +
+          (a.pelo === 'coleta' ? `<rect x="112" y="52" width="10" height="7" rx="3" transform="rotate(30 117 55)" fill="#a0432b"/>` : '');
+      case 'vikingo': {
+        let s = `<path d="M60,100 Q60,62 100,60 Q140,62 140,100 Q126,76 100,74 Q74,76 60,100Z" fill="${hair}" opacity=".35"/>`;
+        s += `<path d="M86,52 Q100,40 114,52 L112,84 Q100,78 88,84Z" fill="${hair}" stroke="${hairD}" stroke-width="1.2"/>`;
+        for (let i = 0; i < 4; i++) s += `<path d="M92,${54 + i * 8} Q100,${49 + i * 8} 108,${54 + i * 8}" stroke="${hairD}" stroke-width="1.2" fill="none"/>`;
+        return s + '<circle cx="100" cy="86" r="2.4" fill="#e0b13e"/>';
+      }
       case 'rapado':
         return `<path d="M60,98 Q60,58 100,58 Q140,58 140,98 Q126,74 100,72 Q74,74 60,98Z" fill="${hair}" opacity=".6"/>`;
     }
@@ -370,6 +412,17 @@
           s += `<path d="M${x - 7},${y} Q${x},${y - 12} ${x + 7},${y} Q${x},${y + 8} ${x - 7},${y}Z" fill="#c9a77c" stroke="#9c7a52" stroke-width="1"/>`;
         }
         return s + '<circle cx="100" cy="204" r="7" fill="#e0b13e" stroke="#9c7a1e" stroke-width="2"/><path d="M96,204 h8 M100,200 v8" stroke="#9c7a1e" stroke-width="1.4"/><path d="M40,230 L160,230" stroke="#5a3820" stroke-width="7"/>';
+      }
+      case 'capa': {
+        let s = base(c) + `<path d="M24,240 Q20,196 60,180 L86,172 L100,196 L114,172 L140,180 Q180,196 176,240Z" fill="${cd}"/>`;
+        [[52, 186, 20], [76, 178, 16], [124, 178, 16], [148, 186, 20]].forEach(([x, y, r]) => (s += `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.7}" fill="#d9cdb8" stroke="#9c8a70" stroke-width="1"/>`));
+        return s + '<circle cx="100" cy="200" r="6" fill="#c9d1d8" stroke="#5e5040" stroke-width="2"/><path d="M60,200 L94,200 M106,200 L140,200" stroke="#5e5040" stroke-width="2"/>';
+      }
+      case 'cuero': {
+        let s = base('#6b4226') + `<path d="M64,240 L70,186 L100,180 L130,186 L136,240Z" fill="${c}" opacity=".85"/>`;
+        s += '<path d="M54,182 L146,240 M146,182 L54,240" stroke="#3b2a1a" stroke-width="6" opacity=".8"/>';
+        [[70, 200], [130, 200], [100, 220], [84, 232], [116, 232]].forEach(([x, y]) => (s += `<circle cx="${x}" cy="${y}" r="2.4" fill="#c9d1d8"/>`));
+        return s + '<path d="M40,190 Q60,176 80,180" stroke="#9c7a52" stroke-width="10" stroke-linecap="round" fill="none"/><path d="M160,190 Q140,176 120,180" stroke="#9c7a52" stroke-width="10" stroke-linecap="round" fill="none"/>';
       }
       case 'hippie': {
         let s = base('#f6e7c1');
@@ -417,6 +470,10 @@
         return '<path d="M57,88 Q100,70 143,88 L143,98 Q100,80 57,98Z" fill="#e76f51"/><circle cx="80" cy="86" r="1.6" fill="#fff"/><circle cx="100" cy="81" r="1.6" fill="#fff"/><circle cx="120" cy="86" r="1.6" fill="#fff"/><path d="M141,92 l16,-6 l-3,13Z" fill="#e76f51"/>';
       case 'gafas':
         return '<g fill="rgba(255,255,255,.15)" stroke="#5a3e2b" stroke-width="2.5"><circle cx="82" cy="112" r="13"/><circle cx="118" cy="112" r="13"/></g><path d="M95,111 q5,-4 10,0" stroke="#5a3e2b" stroke-width="2.5" fill="none"/>';
+      case 'diadema':
+        return '<path d="M58,88 Q100,64 142,88" stroke="#e0b13e" stroke-width="3" fill="none"/><path d="M100,70 l-5,6 l5,8 l5,-8Z" fill="#46c2c2" stroke="#9c7a1e" stroke-width="1.2"/><circle cx="78" cy="80" r="2" fill="#e0b13e"/><circle cx="122" cy="80" r="2" fill="#e0b13e"/>';
+      case 'pendientes':
+        return '<g fill="none" stroke="#e0b13e" stroke-width="2"><circle cx="52" cy="126" r="4"/><circle cx="148" cy="126" r="4"/></g><circle cx="52" cy="131" r="1.8" fill="#46c2c2"/><circle cx="148" cy="131" r="1.8" fill="#46c2c2"/>';
     }
     return '';
   }
@@ -444,6 +501,8 @@
         s += `<circle cx="${x}" cy="${y}" r="1.3" fill="#b5774b" opacity=".7"/>`;
       });
     }
+    if (a.marcas === 'pintura') s += '<path d="M62,104 Q100,98 138,104 L136,118 Q100,112 64,118Z" fill="#2a3f6b" opacity=".55"/>';
+    if (a.marcas === 'runas') s += '<g stroke="#2a6fb0" stroke-width="1.6" fill="none" opacity=".85"><path d="M68,124 l4,-8 l4,8 M70,121 h4"/><path d="M128,118 v10 M124,122 l4,-4 l4,4"/></g>';
     [82, 118].forEach((x, i) => {
       const dir = i === 0 ? -1 : 1;
       s += `<path d="M${x - 10},${111} Q${x},${99} ${x + 10},${111} Q${x},${122} ${x - 10},${111}Z" fill="#fff"/>`;
@@ -453,6 +512,7 @@
       s += `<path d="M${x - 11},${110} Q${x},${98} ${x + 11},${109}" stroke="#2a1a12" stroke-width="3" fill="none" stroke-linecap="round"/>`;
       if (a.genero === 'chica') s += `<path d="M${x + dir * 10},${109.5} l${dir * 4},-3.5 M${x + dir * 8},${105} l${dir * 3},-4" stroke="#2a1a12" stroke-width="1.6" stroke-linecap="round"/>`;
     });
+    if (a.marcas === 'cicatriz') s += `<path d="M112,96 L124,128" stroke="${shade(skin, -0.35)}" stroke-width="2.2" stroke-linecap="round"/><path d="M114,104 l5,-2 M117,112 l5,-2 M120,120 l5,-2" stroke="${shade(skin, -0.35)}" stroke-width="1.2"/>`;
     const bw = a.genero === 'chico' ? 3.4 : 2.4;
     s += `<path d="M72,96 Q82,91 92,95" stroke="${hairD}" stroke-width="${bw}" fill="none" stroke-linecap="round"/><path d="M108,95 Q118,91 128,96" stroke="${hairD}" stroke-width="${bw}" fill="none" stroke-linecap="round"/>`;
     s += `<path d="M100,118 Q98,125 101,127" stroke="${shade(skin, -0.28)}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;

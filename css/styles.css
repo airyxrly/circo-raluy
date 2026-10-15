@@ -511,6 +511,9 @@ details.manage .habitat-grid { margin-top: 10px; }
 .pill.on { background: #eaf6e2; border-color: var(--moss); }
 .legal-links { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .legal-links a { color: var(--sky); font-weight: 700; }
+.decor-svg { width: 72px; height: 80px; }
+.modal .decor-svg { width: 110px; height: 120px; }
+.shiny-tag { background: linear-gradient(90deg, #ffe0f0, #e0f0ff); border-color: #ff7ab0; }
 
 /* Acabado general más serio */
 #topbar { background: linear-gradient(#3b2a1a, #24170c); border-bottom: 3px solid #8b5a2b; }

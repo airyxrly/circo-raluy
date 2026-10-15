@@ -140,7 +140,7 @@
     const S = AA.state;
     if (!AA.dragonById(B.selected)) B.selected = S.dragons.slice().sort((a, b) => b.level - a.level)[0].id;
     return `<section class="card"><h2>Tu campeón</h2>
-      <div class="dragon-row">${S.dragons.map(d => `<button class="dchip ${d.id === B.selected ? 'on' : ''}" data-act="pick" data-id="${d.id}">${AA.dragonSVG(d.species, d.level)}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div></section>`;
+      <div class="dragon-row">${S.dragons.map(d => `<button class="dchip ${d.id === B.selected ? 'on' : ''}" data-act="pick" data-id="${d.id}">${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div></section>`;
   }
 
   function campaignBody() {
@@ -162,7 +162,7 @@
     const team = teamDragons().map(d => d.id);
     return `<section class="card"><h2>Equipo de asalto <small class="muted">${team.length}/3</small></h2>
         <p class="muted small">Tus dragones luchan uno tras otro: cuando uno cae, entra el siguiente. Gana quien deje sin dragones al rival.</p>
-        <div class="dragon-row">${S.dragons.map(d => `<button class="dchip ${team.includes(d.id) ? 'on' : ''}" data-act="toggleTeam" data-id="${d.id}">${AA.dragonSVG(d.species, d.level)}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div>
+        <div class="dragon-row">${S.dragons.map(d => `<button class="dchip ${team.includes(d.id) ? 'on' : ''}" data-act="toggleTeam" data-id="${d.id}">${AA.dragonSVG(d.species, d.level, { shiny: d.shiny })}<span>${esc(d.name)} · Nv ${d.level}</span></button>`).join('')}</div>
       </section>
       <div class="raid-grid">${S.raid.targets.map(r => {
         const D = DIFF[r.diff];

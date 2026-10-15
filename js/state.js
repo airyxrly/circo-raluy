@@ -31,6 +31,7 @@
       platform: { cleared: 0, stars: {} },
       raid: { targets: [], wins: 0 },
       layout: {},
+      decor: [],
       stats: { hatched: 0 },
       lastTick: now, nextId: 100,
     };
@@ -172,7 +173,7 @@
   };
 
   AA.newDragon = function (species) {
-    const d = { id: AA.uid('d'), species, name: AA.SPECIES[species].name, level: 1, feeds: 0, hunger: 100, clean: 100, habitatId: null, born: Date.now() };
+    const d = { id: AA.uid('d'), species, name: AA.SPECIES[species].name, level: 1, feeds: 0, hunger: 100, clean: 100, habitatId: null, born: Date.now(), shiny: Math.random() < AA.SHINY_CHANCE };
     const home = AA.findHome(d);
     if (home) d.habitatId = home.id;
     AA.state.dragons.push(d);

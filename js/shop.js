@@ -65,6 +65,18 @@
     }).join('') + '</div>';
   }
 
+  function decorTab() {
+    const S = AA.state;
+    return `<p class="muted small">Decora tu aldea: cada decoración da <b>+1% de oro</b> a todos tus hábitats (máximo +20%; ahora +${Math.round((AA.decorBonus() - 1) * 100)}%). Aparecen en el mapa y puedes moverlas con ✋ Mover.</p>
+      <div class="shop-grid">${Object.keys(AA.DECORATIONS).map(k => {
+        const D = AA.DECORATIONS[k];
+        const locked = S.level < D.unlock;
+        const owned = (S.decor || []).filter(x => x.type === k).length;
+        return `<div class="shop-item ${locked ? 'locked' : ''}">${AA.decorSVG(k)}<b>${D.name}</b><small>${owned ? 'Tienes ' + owned : '&nbsp;'}</small>
+          ${locked ? `<button class="btn sm" disabled>🔒 Nivel ${D.unlock}</button>` : `<button class="btn btn-primary sm" data-act="decor" data-id="${k}">${AA.costLabel(D.price)}</button>`}</div>`;
+      }).join('')}</div>`;
+  }
+
   function marketTab() {
     return `<p class="muted small">Cambia recursos que te sobran por los que necesitas.</p><div class="list">${EXCHANGE.map((x, i) =>
       `<div class="list-row"><span class="grow"><b>${AA.costLabel(x.give)}</b> → <b>${AA.rewardLabel(x.get)}</b></span><button class="btn btn-primary sm" data-act="swap" data-i="${i}">Cambiar</button></div>`).join('')}</div>`;
@@ -82,8 +94,8 @@
   }
 
   function render(root) {
-    const tabs = [['huevos', '🥚 Huevos'], ['habitats', '🏠 Hábitats'], ['mercado', '⚖️ Mercado'], ['premium', '💎 Gemas y oro']];
-    const body = { huevos: eggsTab, habitats: habitatsTab, mercado: marketTab, premium: premiumTab }[T.tab]();
+    const tabs = [['huevos', '🥚 Huevos'], ['habitats', '🏠 Hábitats'], ['decoracion', '🏮 Decoración'], ['mercado', '⚖️ Cambio'], ['premium', '💎 Gemas y oro']];
+    const body = { huevos: eggsTab, habitats: habitatsTab, decoracion: decorTab, mercado: marketTab, premium: premiumTab }[T.tab]();
     root.innerHTML = `<div class="cover">${AA.coverSVG('tienda', 'Mercado', 'Huevos, hábitats y tesoros')}</div>
       <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${k === T.tab ? 'on' : ''}" data-act="tab" data-id="${k}">${l}</button>`).join('')}</div>${body}`;
     const S = AA.state;
@@ -109,6 +121,16 @@
         AA.ensureLayout();
         AA.addXP(15);
         AA.toast(`🏠 ¡${AA.HABITATS[p.id].name} construido! Ya está en tu aldea.`);
+        AA.commit();
+      },
+      decor(p) {
+        const D = AA.DECORATIONS[p.id];
+        if (!AA.spend(D.price)) return;
+        S.decor = S.decor || [];
+        S.decor.push({ id: AA.uid('x'), type: p.id });
+        AA.ensureLayout();
+        AA.addXP(4);
+        AA.toast(`🏮 ${D.name} colocada en tu aldea`);
         AA.commit();
       },
       swap(p) {

@@ -230,6 +230,21 @@ window.AA = window.AA || {};
     arena:    { name: 'Portal de la arena', art: 'arena',    unlock: 4, desc: 'Minijuego de cartas y torres' },
   };
 
+  // Decoraciones de la aldea: cada una da +1% de oro a todos los hábitats (máximo +20%).
+  AA.DECORATIONS = {
+    farol:      { name: 'Farol de aceite',     price: { gold: 150 },  unlock: 1 },
+    jardin:     { name: 'Jardín de flores',    price: { gold: 200 },  unlock: 1 },
+    antorcha:   { name: 'Antorcha rúnica',     price: { gold: 250 },  unlock: 2 },
+    estandarte: { name: 'Estandarte del clan', price: { gold: 400 },  unlock: 3 },
+    hoguera:    { name: 'Hoguera vikinga',     price: { gold: 500 },  unlock: 4 },
+    pozo:       { name: 'Pozo de piedra',      price: { gold: 700 },  unlock: 5 },
+    menhir:     { name: 'Menhir de runas',     price: { gold: 1200 }, unlock: 7 },
+    fuente:     { name: 'Fuente del dragón',   price: { gold: 2000 }, unlock: 9 },
+    arbol:      { name: 'Árbol sagrado',       price: { gems: 15 },   unlock: 6 },
+    estatua:    { name: 'Estatua de dragón',   price: { gems: 30 },   unlock: 10 },
+  };
+  AA.decorBonus = () => 1 + Math.min(0.2, ((AA.state && AA.state.decor) || []).length * 0.01);
+
   AA.CROPS = [
     { id: 'trigo',    name: 'Trigo',           icon: '🌾', cost: 10,  food: 25,   time: 30,   unlock: 1 },
     { id: 'calabaza', name: 'Calabaza',        icon: '🎃', cost: 60,  food: 160,  time: 300,  unlock: 2 },
@@ -246,6 +261,7 @@ window.AA = window.AA || {};
   AA.feedCost = lvl => Math.round(5 * Math.pow(lvl, 1.5));
   AA.stageOf = lvl => (lvl >= 10 ? 'adulto' : lvl >= 5 ? 'joven' : 'bebe');
   AA.STAGES = { bebe: 'Bebé', joven: 'Joven', adulto: 'Adulto' };
+  AA.SHINY_CHANCE = 0.03; // probabilidad de variante iridiscente al eclosionar
   AA.BREED_MIN_LEVEL = 5;
   AA.BREED_COST = 200;
 
@@ -261,7 +277,7 @@ window.AA = window.AA || {};
   };
 
   AA.happiness = d => (d.hunger + d.clean) / 2;
-  AA.goldRate = d => AA.SPECIES[d.species].gold * (1 + 0.15 * (d.level - 1)) * (0.4 + 0.6 * AA.happiness(d) / 100);
+  AA.goldRate = d => AA.SPECIES[d.species].gold * (1 + 0.15 * (d.level - 1)) * (0.4 + 0.6 * AA.happiness(d) / 100) * AA.decorBonus();
 
   AA.MOVES = {
     fuego:     [{ name: 'Llamarada', power: 32, cd: 2 },          { name: 'Infierno', power: 52, cd: 4 }],
@@ -335,16 +351,17 @@ window.AA = window.AA || {};
   AA.AVATAR_OPTIONS = {
     genero: [['chica', 'Chica'], ['chico', 'Chico'], ['nb', 'No binario']],
     piel: ['#fde3cf', '#f5cfae', '#e0ac83', '#c68a5e', '#8d5a3b', '#5c3a24'],
-    pelo: [['largo', 'Suelto'], ['trenzas', 'Trenzas'], ['corto', 'Corto'], ['rizado', 'Rizado'], ['mono', 'Moño'], ['rapado', 'Rapado']],
-    colorPelo: ['#b8925a', '#e9cf8a', '#5a3a22', '#1f1a17', '#a8432b', '#d9d9d9', '#7b5ec7', '#3fa7a0'],
-    ojos: ['#6b4423', '#3a7bd5', '#3f8f4f', '#8a7f3a', '#5f6a72'],
-    ropa: [['vikinga', 'Túnica vikinga'], ['hippie', 'Chaleco hippie'], ['armadura', 'Armadura'], ['vestido', 'Vestido floral'], ['granjero', 'Peto de granja']],
-    colorRopa: ['#7a9e7e', '#c0392b', '#2a6f97', '#d9a441', '#7b4f9d', '#6b4226'],
-    accesorio: [['flores', 'Corona de flores'], ['casco', 'Casco vikingo'], ['bandana', 'Bandana'], ['gafas', 'Gafas redondas'], ['ninguno', 'Nada']],
+    pelo: [['largo', 'Suelto'], ['trenzas', 'Trenzas'], ['coleta', 'Coleta'], ['vikingo', 'Vikingo'], ['corto', 'Corto'], ['rizado', 'Rizado'], ['mono', 'Moño'], ['rapado', 'Rapado']],
+    colorPelo: ['#b8925a', '#e9cf8a', '#5a3a22', '#1f1a17', '#a8432b', '#d9d9d9', '#b9c4cc', '#e58fb0', '#7b5ec7', '#3fa7a0'],
+    ojos: ['#6b4423', '#3a7bd5', '#3f8f4f', '#8a7f3a', '#5f6a72', '#c98a2b', '#7b5ec7'],
+    ropa: [['vikinga', 'Túnica vikinga'], ['capa', 'Capa de pieles'], ['cuero', 'Armadura de cuero'], ['armadura', 'Armadura'], ['hippie', 'Chaleco hippie'], ['vestido', 'Vestido floral'], ['granjero', 'Peto de granja']],
+    colorRopa: ['#7a9e7e', '#c0392b', '#2a6f97', '#d9a441', '#7b4f9d', '#6b4226', '#2c2c34', '#e8e2d4'],
+    accesorio: [['flores', 'Corona de flores'], ['diadema', 'Diadema'], ['casco', 'Casco vikingo'], ['pendientes', 'Pendientes'], ['bandana', 'Bandana'], ['gafas', 'Gafas redondas'], ['ninguno', 'Nada']],
+    marcas: [['ninguna', 'Ninguna'], ['pintura', 'Pintura de guerra'], ['runas', 'Runas'], ['cicatriz', 'Cicatriz']],
   };
   AA.DEFAULT_AVATAR = {
     genero: 'chica', piel: '#fde3cf', pelo: 'largo', colorPelo: '#b8925a', ojos: '#6b4423',
-    ropa: 'vikinga', colorRopa: '#7a9e7e', accesorio: 'flores', pecas: true, barba: false,
+    ropa: 'vikinga', colorRopa: '#7a9e7e', accesorio: 'flores', marcas: 'ninguna', pecas: true, barba: false,
   };
   // La chica del logo: rubia oscura con el pelo suelto, pecas, ojos marrones, piel clara, hippie vikinga.
   AA.LOGO_AVATAR = Object.assign({}, AA.DEFAULT_AVATAR);

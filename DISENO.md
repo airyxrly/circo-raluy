@@ -150,7 +150,35 @@ Barra inferior: Aldea · Criadero · Batallas · Minijuegos · Mercado · Perfil
 
 ### 3.7 Creador de cuidador
 - **Estilo anime**: ojos con degradado y brillos, y pelo con degradado y mechones.
-- **Opciones**: género, 6 tonos de piel, 6 peinados (incluido el pelo suelto ondulado), 8 colores de pelo, 5 colores de ojos, pecas, barba, 5 conjuntos de ropa con 6 colores y 5 accesorios. También hay un botón aleatorio.
+- **Opciones**:
+  - Género y 6 tonos de piel.
+  - 8 peinados: suelto ondulado, trenzas, coleta, vikingo con cresta trenzada, corto, rizado, moño y rapado.
+  - 10 colores de pelo y 7 colores de ojos.
+  - Pecas y barba.
+  - 7 conjuntos de ropa (túnica vikinga, capa de pieles, armadura de cuero, armadura, chaleco hippie, vestido floral y peto de granja) con 8 colores.
+  - 7 accesorios (corona de flores, diadema, casco vikingo, pendientes, bandana, gafas o nada).
+  - 4 marcas: ninguna, pintura de guerra, runas o cicatriz.
+  - También hay un botón aleatorio.
+
+### 3.10 Decoraciones y variantes
+- **10 decoraciones** colocables en el mapa:
+
+| Decoración | Desde nivel | Precio |
+|---|---|---|
+| Farol de aceite | 1 | Oro |
+| Jardín de flores | 1 | Oro |
+| Antorcha rúnica | 2 | Oro |
+| Estandarte del clan | 3 | Oro |
+| Hoguera vikinga | 4 | Oro |
+| Pozo de piedra | 5 | Oro |
+| Árbol sagrado | 6 | Gemas |
+| Menhir de runas | 7 | Oro |
+| Fuente del dragón | 9 | Oro |
+| Estatua de dragón | 10 | Gemas |
+
+  - Cada una da **+1% de oro** a todos los hábitats, hasta un máximo de +20%.
+  - Se mueven con ✋ Mover y se venden por un tercio de su precio.
+- **Variantes iridiscentes**: cada eclosión tiene un 3% de probabilidad de dar una variante de color alternativo, marcada con 🌈 en la ficha del dragón.
 
 ### 3.8 Mercado
 - **Huevos**: las 102 especies, con filtro por elemento y la opción "solo las que puedo comprar". Las bloqueadas muestran su nivel.
@@ -178,13 +206,13 @@ Jugador {
   raid: { targets: AldeaRival[3], wins },
   pvp: { rating, wins, losses, activeMatch },
   arena: { trophies, wins, losses, deck: dragonId[] },
-  platform: { cleared, stars }, stats, ownerUid, updatedAt, lastTick, onboarded
+  platform: { cleared, stars }, decor: { id, type }[], stats, ownerUid, updatedAt, lastTick, onboarded
 }
-Dragon     { id, species, name, level (1-30), feeds (0-3), hunger, clean, habitatId | null, born }
+Dragon     { id, species, name, level (1-30), feeds (0-3), hunger, clean, habitatId | null, born, shiny }
 Habitat    { id, type: elemento, level (1-3), gold }
 Huevo      { id, species, start, duration }
 AldeaRival { id, diff (0-2), name, avatar: Personaje, team: { species, level, name }[3], loot }
-Personaje  { genero, piel, pelo, colorPelo, ojos, ropa, colorRopa, accesorio, pecas, barba }
+Personaje  { genero, piel, pelo, colorPelo, ojos, ropa, colorRopa, accesorio, marcas, pecas, barba }
 Especie    { name, elements[], rarity, unlock, price | null, colors[2], stats, gold, look{horns, marks, bulk, spikes} }
 Consentimiento (localStorage "airyaldea_consent") { v, date, external, analytics }
 ```
@@ -267,6 +295,29 @@ js/main.js        navegación, minijuegos, portada, reloj
 | Cielo de portada | `#1d2b53` → `#7e4f8f` → `#f28c28` |
 
 Cada uno de los 10 elementos tiene su color y su brillo: fuego, agua, planta, tierra, aire, rayo, hielo, metal, luz y oscuridad.
+
+### Dirección artística de los dragones y calidad visual
+**Objetivo:** anime maduro. Dragones bonitos y creíbles, con presencia de criatura poderosa, nunca de peluche. La referencia es la ilustración de fantasía japonesa y coreana (gacha de calidad o portadas de novela ligera), no los dibujos infantiles.
+
+| Aspecto | Regla |
+|---|---|
+| Proporciones | Bebé: cabeza grande y ojos redondos, aunque ya con cuernos y garras. Joven: estilizado. Adulto: cuello largo, hocico alargado, ojos almendrados con pupila de reptil y mandíbula con púas. |
+| Silueta | Que se reconozca en negro: perfil de 3/4, alas abiertas y cola en S. La variedad sale de los cuernos (4 tipos), las alas (4 tipos), las púas, la corpulencia y las marcas. |
+| Alas | Membrana con venas (fuego, agua, planta, tierra, rayo, metal), plumas (aire, luz), rasgadas con agujeros (oscuridad) o cristal facetado (hielo). |
+| Sombreado | Estilo *cel-shading* anime: luz base con degradado, sombra dura en la parte inferior del cuerpo, cola y mandíbula, luz de contorno blanca en lomo y cráneo y brillo en los ojos. |
+| Color | Dos tonos por especie, el del elemento principal y el secundario. Saturación media-alta y sombras frías. Nada de colores pastel planos en los adultos. |
+| Efectos de elemento | Brasas, burbujas, hojas, rocas, viento, chispas, escarcha, placas de metal, destellos o niebla. Siempre secundarios a la silueta. |
+| Rareza | Común: limpio. Raro: más detalle. Épico: aura del color del elemento. Legendario: cuernos dorados y aura fuerte. Mítico: anillo místico. |
+| Detalle | Escamas con textura, garras de hueso, dientes en los adultos y crestas por elemento. |
+
+🔶 **DECISIÓN — realismo**: el prototipo genera los dragones con vectores por código (102 especies × 3 etapas, más las variantes, sin pesar nada). El siguiente salto de calidad necesita ilustración profesional:
+- **Opción A:** arte 2D pintado por especie y etapa (unas 306 ilustraciones), en el estilo descrito arriba.
+- **Opción B:** modelos 3D con *shader* anime (*toon shading*) y animaciones esqueléticas, usando Unity o Godot.
+- **Opción C:** sprites 2D animados por huesos con Spine o DragonBones. Es el punto medio en coste y calidad.
+
+En cualquier caso, cada especie debe tener una hoja de personaje: vistas, paleta, etapas y efectos.
+
+**Calidad visual general**: portadas ilustradas en cada sección, mapa isométrico con mar y acantilados, cartas con marco por rareza y animaciones suaves (paseo de los dragones, golpes y eclosión). La interfaz tiene marcos de madera oscura y pergamino, y se respeta la preferencia de "reducir movimiento".
 
 ### Tipografía e interfaz
 - **Fredoka** (títulos) y **Nunito** (texto). Si no se aceptan los servicios externos, se usan las del sistema.
