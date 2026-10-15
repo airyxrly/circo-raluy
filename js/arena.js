@@ -3,7 +3,7 @@
 (function (AA) {
   const esc = AA.esc;
   const W = 360, H = 600, MID = 300;
-  const MANA_RATE = 1 / 1.4, MAX_MANA = 10, TIME = 150, DECK_MAX = 6;
+  const MANA_RATE = 1 / 2.8, MAX_MANA = 10, TIME = 180, DOUBLE_AT = 120, OVERTIME = 60, DECK_MAX = 6;
   const RIVALS = ['Sigrid', 'Bjorn', 'Freya', 'Leif', 'Astrid', 'Ragnar', 'Ingrid', 'Ulf', 'Saga', 'Erik'];
   const A = { game: null };
 
@@ -44,7 +44,11 @@
         <ul class="plain small">
           <li>Elige una carta y toca tu mitad del campo (abajo) para soltar al dragón.</li>
           <li>Cada carta cuesta maná 💧, que se recarga solo (máximo ${MAX_MANA}).</li>
-          <li>Destruye el castillo rival para ganar al instante. Si se acaba el tiempo (${TIME / 60 | 0}:${String(TIME % 60).padStart(2, '0')}), gana quien haya destruido más torres.</li>
+          <li>Como en Clash Royale: cada torre de princesa vale 👑 1 y la torre del rey 👑 3 (victoria al instante). La torre del rey duerme hasta que la golpean o cae una de sus princesas.</li>
+          <li>Las torres fijan un objetivo y no lo sueltan hasta que muere o sale de su alcance. Los dragones cruzan el río por los puentes.</li>
+          <li>Los dragones de 🪨 tierra y ⚙️ metal son rompetorres: solo atacan edificios.</li>
+          <li>Partida de 3:00 con elixir doble en el último minuto. Si hay empate de coronas, prórroga de 1:00 a muerte súbita.</li>
+          <li>Si derribas una torre de princesa, puedes soltar dragones en ese carril del campo rival.</li>
           <li>Victoria: +30 🏆 y oro. Derrota: −20 🏆.</li>
         </ul>
         <p class="muted small">Ahora mismo te enfrentas a aldeas rivales controladas por la IA. Las batallas en tiempo real contra otras personas están previstas para la fase 2 (ver DISENO.md).</p>
@@ -67,11 +71,16 @@
   }
 
   // ---------- Partida ----------
+  // Como en Clash Royale: dos torres de princesa que disparan flechas rápidas y una
+  // torre del rey que dispara cañonazos y solo despierta si la golpean o cae una princesa.
   function makeBuildings() {
     const b = (team, kind, x, y) => {
-      const castle = kind === 'castle';
-      const hp = castle ? 2200 : 1200;
-      return { team, kind, x, y, hp, max: hp, r: castle ? 30 : 22, range: castle ? 140 : 125, dmg: castle ? 60 : 48, rate: 0.8, cd: 0, dead: false };
+      const king = kind === 'castle';
+      const hp = king ? 2400 : 1400;
+      return {
+        team, kind, x, y, hp, max: hp, r: king ? 30 : 22, range: king ? 118 : 125, dmg: king ? 85 : 44,
+        rate: king ? 1.0 : 0.8, cd: 0, dead: false, active: !king, target: null,
+      };
     };
     return [
       b('foe', 'tower', 80, 125), b('foe', 'tower', 280, 125), b('foe', 'castle', 180, 55),
@@ -88,6 +97,8 @@
       team, species: c.species, level: c.level, els, x, y, r: 16,
       hp, max: hp, dmg: st.atk * (ranged ? 1.7 : 2.2), rate: 1, cd: 0.4,
       speed: 22 + st.spd * 1.4, range: ranged ? 85 : 6, ranged,
+      // Los de tierra y metal son "rompetorres": ignoran a las tropas, como el Gigante.
+      buildingsOnly: ['tierra', 'metal'].includes(els[0]), target: null,
       img: AA.dragonImage(c.species, Math.max(5, c.level), team === 'foe'),
     };
   }
@@ -145,7 +156,7 @@
     const rect = A.cv.getBoundingClientRect();
     const x = (e.clientX - rect.left) * W / rect.width;
     const y = (e.clientY - rect.top) * H / rect.height;
-    if (y < MID + 20) return g.fx.push({ text: 'Solo en tu lado', x, y, t: 1, color: '#c0392b' });
+    if (!canDeploy(g, x, y)) return g.fx.push({ text: 'Aquí no puedes soltarlo', x, y, t: 1, color: '#c0392b' });
     const c = g.queue[g.sel];
     if (!c) return;
     if (g.mana < c.cost) return g.fx.push({ text: 'Falta maná', x, y, t: 1, color: '#2f8fd8' });
@@ -179,20 +190,58 @@
 
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+  // Tu mitad del campo; si cae una torre de princesa rival, también su carril hasta cerca de su rey.
+  function canDeploy(g, x, y) {
+    if (y > MID + 20 && y < H - 8) return true;
+    if (y < 150 || y > MID - 20) return false;
+    const left = x < W / 2;
+    return g.buildings.some(b => b.team === 'foe' && b.kind === 'tower' && b.dead && (b.x < W / 2) === left);
+  }
+
+  // Punto al que caminar: si el objetivo está al otro lado del río, primero el puente.
+  function waypoint(u, target) {
+    const mySide = u.y > MID, tgSide = target.y > MID;
+    if (mySide === tgSide || Math.abs(u.y - MID) < 6) return target;
+    const bx = u.x < W / 2 ? 80 : 280;
+    const entry = mySide ? MID + 20 : MID - 20, exit = mySide ? MID - 22 : MID + 22;
+    if (Math.abs(u.x - bx) > 8) return { x: bx, y: entry };
+    return { x: bx, y: exit };
+  }
+
+  function crownsOf(g, team) {
+    return g.buildings.filter(b => b.team !== team && b.dead).reduce((t, b) => t + (b.kind === 'castle' ? 3 : 1), 0);
+  }
+
   function damage(target, amount, el, g) {
     const mult = target.els ? AA.elementMult(el, target.els) : 1;
     const dmg = Math.round(amount * mult);
     target.hp -= dmg;
     g.fx.push({ text: String(dmg), x: target.x + (Math.random() * 10 - 5), y: target.y - 18, t: 0.7, color: mult > 1 ? '#e8553b' : '#3b2a1a' });
+    if (target.kind && !target.active) wakeKing(target, g);
     if (target.kind && target.hp <= 0 && !target.dead) {
       target.dead = true;
       g.fx.push({ text: '💥', x: target.x, y: target.y, t: 1.2, size: 34 });
+      g.fx.push({ text: target.team === 'foe' ? '👑 +' + (target.kind === 'castle' ? 3 : 1) : '👑 −', x: W / 2, y: H / 2, t: 1.6, size: 26, color: target.team === 'foe' ? '#2a6f97' : '#c0392b' });
       if (target.kind === 'castle') finish(target.team === 'foe' ? 'win' : 'lose');
+      else {
+        const king = g.buildings.find(b => b.team === target.team && b.kind === 'castle');
+        wakeKing(king, g);
+        // Muerte súbita: en la prórroga gana la primera torre derribada.
+        if (g.overtime) finish(target.team === 'foe' ? 'win' : 'lose');
+      }
     }
   }
 
+  function wakeKing(king, g) {
+    if (!king || king.active || king.dead) return;
+    king.active = true;
+    g.fx.push({ text: '¡El rey despierta!', x: king.x, y: king.y + (king.team === 'foe' ? 46 : -46), t: 1.6, size: 15, color: '#e0a100' });
+  }
+
+  const manaRate = g => MANA_RATE * (g.t >= DOUBLE_AT ? 2 : 1);
+
   function aiTurn(g, dt) {
-    g.emana = Math.min(MAX_MANA, g.emana + MANA_RATE * dt);
+    g.emana = Math.min(MAX_MANA, g.emana + manaRate(g) * dt);
     g.aiCd -= dt;
     const c = g.equeue[0];
     if (g.aiCd > 0 || g.emana < c.cost) return;
@@ -207,26 +256,39 @@
 
   function update(g, dt) {
     g.t += dt;
-    g.mana = Math.min(MAX_MANA, g.mana + MANA_RATE * dt);
+    if (!g.doubleShown && g.t >= DOUBLE_AT) { g.doubleShown = true; g.fx.push({ text: '¡Elixir x2!', x: W / 2, y: MID - 40, t: 2, size: 24, color: '#9b4dca' }); }
+    g.mana = Math.min(MAX_MANA, g.mana + manaRate(g) * dt);
     aiTurn(g, dt);
     const alive = g.buildings.filter(b => !b.dead);
     for (const u of g.units) {
-      const foes = g.units.filter(o => o.team !== u.team && o.hp > 0);
-      let target = null, best = 110;
-      for (const o of foes) { const d = dist(u, o); if (d < best) { best = d; target = o; } }
-      if (!target) {
-        best = Infinity;
+      const isAlive = t => t && (t.kind ? !t.dead : t.hp > 0);
+      // Fija objetivo como en Clash Royale: lo mantiene hasta que muere, salvo que
+      // persiga un edificio y una tropa enemiga se le acerque.
+      if (!isAlive(u.target)) u.target = null;
+      if (!u.buildingsOnly && (!u.target || u.target.kind)) {
+        let best = u.target ? 70 : 105;
+        for (const o of g.units) {
+          if (o.team === u.team || o.hp <= 0) continue;
+          const d = dist(u, o);
+          if (d < best) { best = d; u.target = o; }
+        }
+      }
+      if (!u.target) {
+        let best = Infinity;
         for (const b of alive) {
           if (b.team === u.team) continue;
           const d = dist(u, b);
-          if (d < best) { best = d; target = b; }
+          if (d < best) { best = d; u.target = b; }
         }
       }
+      const target = u.target;
       if (!target) continue;
       const d = dist(u, target);
       if (d > u.range + u.r + target.r) {
-        u.x += (target.x - u.x) / d * u.speed * dt;
-        u.y += (target.y - u.y) / d * u.speed * dt;
+        const wp = waypoint(u, target);
+        const dw = dist(u, wp) || 1;
+        u.x += (wp.x - u.x) / dw * u.speed * dt;
+        u.y += (wp.y - u.y) / dw * u.speed * dt;
       } else {
         u.cd -= dt;
         if (u.cd <= 0) {
@@ -237,17 +299,22 @@
       }
     }
     for (const b of alive) {
+      if (!b.active) continue;
       b.cd -= dt;
-      if (b.cd > 0) continue;
-      let target = null, best = b.range;
-      for (const u of g.units) {
-        if (u.team === b.team || u.hp <= 0) continue;
-        const d = dist(b, u);
-        if (d < best) { best = d; target = u; }
+      // La torre sigue al mismo objetivo hasta que muere o sale de su alcance.
+      if (b.target && (b.target.hp <= 0 || dist(b, b.target) > b.range)) b.target = null;
+      if (!b.target) {
+        let best = b.range;
+        for (const u of g.units) {
+          if (u.team === b.team || u.hp <= 0) continue;
+          const d = dist(b, u);
+          if (d < best) { best = d; b.target = u; }
+        }
       }
-      if (target) {
+      if (b.target && b.cd <= 0) {
         b.cd = b.rate;
-        g.projs.push({ x: b.x, y: b.y - 10, target, dmg: b.dmg, el: null, color: b.team === 'me' ? '#2a6f97' : '#c0392b', speed: 320 });
+        const king = b.kind === 'castle';
+        g.projs.push({ x: b.x, y: b.y - (king ? 18 : 24), target: b.target, dmg: b.dmg, el: null, kind: king ? 'bala' : 'flecha', color: king ? '#2c2c34' : '#5a3820', speed: king ? 260 : 420 });
       }
     }
     for (const p of g.projs) {
@@ -276,81 +343,171 @@
     g.units = g.units.filter(u => u.hp > 0);
     g.fx.forEach(f => { f.t -= dt; f.y -= 20 * dt; });
     g.fx = g.fx.filter(f => f.t > 0);
-    if (!g.over && g.t >= TIME) {
-      const crowns = team => g.buildings.filter(b => b.team !== team && b.dead).length;
-      const hpLeft = team => g.buildings.filter(b => b.team === team).reduce((t, b) => t + Math.max(0, b.hp) / b.max, 0);
-      const me = crowns('me'), foe = crowns('foe');
+    if (!g.over && g.t >= TIME && !g.overtime) {
+      const me = crownsOf(g, 'me'), foe = crownsOf(g, 'foe');
       if (me !== foe) finish(me > foe ? 'win' : 'lose');
-      else { const a = hpLeft('me'), b = hpLeft('foe'); finish(Math.abs(a - b) < 0.05 ? 'draw' : a > b ? 'win' : 'lose'); }
+      else { g.overtime = true; g.fx.push({ text: '¡Prórroga! Muerte súbita', x: W / 2, y: MID - 40, t: 2.4, size: 20, color: '#c0392b' }); }
+    }
+    if (!g.over && g.t >= TIME + OVERTIME) {
+      const hpLeft = team => g.buildings.filter(b => b.team === team && !b.dead).reduce((t, b) => Math.min(t, b.hp / b.max), 1);
+      const a = hpLeft('me'), b = hpLeft('foe');
+      finish(Math.abs(a - b) < 0.02 ? 'draw' : a > b ? 'win' : 'lose');
     }
   }
 
-  function drawBuilding(c, b) {
+  function drawBuilding(c, b, t) {
     const col = b.team === 'me' ? '#2a6f97' : '#c0392b';
+    const roof = b.team === 'me' ? '#1f5a80' : '#9c2a1e';
+    const king = b.kind === 'castle';
     const s = b.r;
     c.save();
     c.translate(b.x, b.y);
     if (b.dead) {
-      c.fillStyle = '#7d6a55';
-      c.beginPath(); c.ellipse(0, 6, s, s * 0.5, 0, 0, 7); c.fill();
+      c.fillStyle = '#6b5a46';
+      c.beginPath(); c.ellipse(0, 6, s * 1.1, s * 0.55, 0, 0, 7); c.fill();
+      c.fillStyle = '#9b8a76';
+      [[-10, 0, 7], [6, 4, 6], [-2, -4, 5], [12, -2, 4]].forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); });
       c.restore();
       return;
     }
-    c.fillStyle = 'rgba(0,0,0,.2)';
-    c.beginPath(); c.ellipse(0, s * 0.9, s * 1.1, s * 0.4, 0, 0, 7); c.fill();
-    c.fillStyle = '#b9a98f'; c.fillRect(-s, -s * 0.6, s * 2, s * 1.5);
-    c.fillStyle = '#9c8a70';
-    for (let i = 0; i < 4; i++) c.fillRect(-s + i * s * 0.55, -s * 0.9, s * 0.35, s * 0.35);
-    c.fillStyle = '#6b4226'; c.fillRect(-s * 0.25, s * 0.3, s * 0.5, s * 0.6);
-    c.fillStyle = '#3b2a1a'; c.fillRect(-1, -s * 1.6, 2, s * 0.8);
-    c.fillStyle = col;
-    c.beginPath(); c.moveTo(1, -s * 1.6); c.lineTo(s * 0.7, -s * 1.35); c.lineTo(1, -s * 1.1); c.fill();
+    // sombra y base de piedra
+    c.fillStyle = 'rgba(0,0,0,.28)';
+    c.beginPath(); c.ellipse(0, s * 0.95, s * 1.25, s * 0.45, 0, 0, 7); c.fill();
+    const stone = c.createLinearGradient(-s, 0, s, 0);
+    stone.addColorStop(0, '#9c8f7c'); stone.addColorStop(0.5, '#d2c6b0'); stone.addColorStop(1, '#8a7d6a');
+    c.fillStyle = stone;
+    c.fillRect(-s, -s * 0.7, s * 2, s * 1.6);
+    c.strokeStyle = 'rgba(60,45,30,.45)'; c.lineWidth = 1;
+    for (let y = -s * 0.4; y < s * 0.9; y += 7) { c.beginPath(); c.moveTo(-s, y); c.lineTo(s, y); c.stroke(); }
+    c.fillStyle = '#b9ac96';
+    for (let i = 0; i < 5; i++) c.fillRect(-s + i * s * 0.45, -s * 1.0, s * 0.3, s * 0.34);
+    c.fillStyle = col; c.fillRect(-s, -s * 0.72, s * 2, 4);
+    if (king) {
+      // torre del rey: cañón y corona; dormida hasta que se activa
+      c.fillStyle = roof;
+      c.beginPath(); c.moveTo(-s * 0.7, -s * 1.0); c.lineTo(0, -s * 1.75); c.lineTo(s * 0.7, -s * 1.0); c.fill();
+      c.fillStyle = '#f2c94c';
+      c.beginPath(); c.moveTo(-9, -s * 1.8); c.lineTo(-9, -s * 2.1); c.lineTo(-4, -s * 1.95); c.lineTo(0, -s * 2.2); c.lineTo(4, -s * 1.95); c.lineTo(9, -s * 2.1); c.lineTo(9, -s * 1.8); c.fill();
+      c.fillStyle = '#2c2c34';
+      const dir = b.team === 'me' ? -1 : 1;
+      c.fillRect(-4, dir > 0 ? s * 0.2 : -s * 0.45, 8, 12);
+      if (!b.active) {
+        c.fillStyle = '#ffffff'; c.font = '700 13px Fredoka, sans-serif'; c.textAlign = 'center';
+        c.globalAlpha = 0.6 + 0.4 * Math.sin(t * 3);
+        c.fillText('Zz', s * 0.9, -s * 1.6);
+        c.globalAlpha = 1;
+      }
+    } else {
+      // torre de princesa con arquera
+      c.fillStyle = roof;
+      c.beginPath(); c.moveTo(-s * 0.85, -s * 1.0); c.lineTo(0, -s * 1.6); c.lineTo(s * 0.85, -s * 1.0); c.fill();
+      c.fillStyle = '#f5cfae'; c.beginPath(); c.arc(0, -s * 1.15, 4.5, 0, 7); c.fill();
+      c.strokeStyle = '#6b4226'; c.lineWidth = 2;
+      c.beginPath(); c.arc(5, -s * 1.1, 6, -1.2, 1.2); c.stroke();
+    }
+    c.fillStyle = '#4a3220'; c.fillRect(-s * 0.22, s * 0.35, s * 0.44, s * 0.55);
     c.restore();
-    hpBar(c, b.x, b.y - s * 1.9, s * 2, b.hp / b.max, col);
+    hpBar(c, b.x, b.y - s * (king ? 2.45 : 1.95), s * 2.2, b.hp / b.max, col, Math.ceil(Math.max(0, b.hp)));
   }
 
-  function hpBar(c, x, y, w, pct, col) {
-    c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x - w / 2, y, w, 5);
-    c.fillStyle = col; c.fillRect(x - w / 2, y, w * Math.max(0, pct), 5);
+  function hpBar(c, x, y, w, pct, col, label) {
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, label ? 9 : 6);
+    c.fillStyle = col; c.fillRect(x - w / 2, y, w * Math.max(0, pct), label ? 7 : 4);
+    if (label) {
+      c.fillStyle = '#fff'; c.font = '700 8px Nunito, sans-serif'; c.textAlign = 'center';
+      c.fillText(label, x, y + 6.5);
+    }
+  }
+
+  function drawField(c, g) {
+    const grass = c.createLinearGradient(0, 0, 0, H);
+    grass.addColorStop(0, '#6f9e4f'); grass.addColorStop(0.5, '#8cbc63'); grass.addColorStop(1, '#6f9e4f');
+    c.fillStyle = grass; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(255,255,255,.05)';
+    for (let y = 0; y < H; y += 24) for (let x = (y / 24) % 2 ? 0 : 24; x < W; x += 48) c.fillRect(x, y, 24, 24);
+    // caminos de los carriles con borde de piedra
+    [80, 280].forEach(x => {
+      c.fillStyle = '#c9ad7d'; c.fillRect(x - 17, 40, 34, H - 80);
+      c.fillStyle = 'rgba(90,60,30,.35)'; c.fillRect(x - 17, 40, 3, H - 80); c.fillRect(x + 14, 40, 3, H - 80);
+    });
+    c.fillStyle = '#c9ad7d'; c.fillRect(80, 52, 200, 18); c.fillRect(80, H - 70, 200, 18);
+    // río con olas
+    const water = c.createLinearGradient(0, MID - 16, 0, MID + 16);
+    water.addColorStop(0, '#3f8fc0'); water.addColorStop(0.5, '#6ec3ea'); water.addColorStop(1, '#3f8fc0');
+    c.fillStyle = '#5a7d3a'; c.fillRect(0, MID - 19, W, 38);
+    c.fillStyle = water; c.fillRect(0, MID - 15, W, 30);
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5;
+    for (let x = ((g.t * 18) % 40) - 40; x < W; x += 40) { c.beginPath(); c.moveTo(x, MID); c.quadraticCurveTo(x + 8, MID - 4, x + 16, MID); c.stroke(); }
+    // puentes de madera
+    [80, 280].forEach(x => {
+      c.fillStyle = '#7a4f2a'; c.fillRect(x - 22, MID - 22, 44, 44);
+      c.fillStyle = '#a0703c';
+      for (let y = MID - 20; y < MID + 20; y += 7) c.fillRect(x - 20, y, 40, 5);
+      c.fillStyle = '#4a3220'; c.fillRect(x - 24, MID - 22, 4, 44); c.fillRect(x + 20, MID - 22, 4, 44);
+    });
   }
 
   function draw(g) {
     const c = A.ctx;
-    const grass = c.createLinearGradient(0, 0, 0, H);
-    grass.addColorStop(0, '#8fbf6a'); grass.addColorStop(0.5, '#a6d17f'); grass.addColorStop(1, '#8fbf6a');
-    c.fillStyle = grass; c.fillRect(0, 0, W, H);
-    c.fillStyle = '#d9c08f';
-    c.fillRect(64, 0, 32, H); c.fillRect(264, 0, 32, H);
-    c.fillStyle = '#5fb4d9'; c.fillRect(0, MID - 14, W, 28);
-    c.fillStyle = '#a0703c'; c.fillRect(58, MID - 18, 44, 36); c.fillRect(258, MID - 18, 44, 36);
-    if (g.queue[g.sel] && g.mana >= g.queue[g.sel].cost) {
-      c.fillStyle = 'rgba(42,111,151,.12)'; c.fillRect(0, MID + 20, W, H - MID - 20);
+    drawField(c, g);
+    const sel = g.queue[g.sel];
+    if (sel && g.mana >= sel.cost) {
+      c.fillStyle = 'rgba(80,170,255,.13)';
+      c.fillRect(0, MID + 20, W, H - MID - 28);
+      g.buildings.filter(b => b.team === 'foe' && b.kind === 'tower' && b.dead).forEach(b => {
+        c.fillRect(b.x < W / 2 ? 0 : W / 2, 150, W / 2, MID - 170);
+      });
+    } else {
+      c.fillStyle = 'rgba(192,57,43,.08)'; c.fillRect(0, 0, W, MID - 20);
     }
-    g.buildings.forEach(b => drawBuilding(c, b));
-    for (const u of g.units) {
+    // de arriba abajo para que se solapen bien
+    const things = g.buildings.map(b => ({ y: b.y, b })).concat(g.units.map(u => ({ y: u.y, u }))).sort((a, b) => a.y - b.y);
+    for (const it of things) {
+      if (it.b) { drawBuilding(c, it.b, g.t); continue; }
+      const u = it.u;
       const col = u.team === 'me' ? '#2a6f97' : '#c0392b';
-      c.fillStyle = col; c.globalAlpha = 0.35;
-      c.beginPath(); c.ellipse(u.x, u.y + 12, 16, 6, 0, 0, 7); c.fill();
-      c.globalAlpha = 1;
-      if (u.img.complete) c.drawImage(u.img, u.x - 22, u.y - 26, 44, 44);
-      hpBar(c, u.x, u.y - 30, 30, u.hp / u.max, col);
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(u.x, u.y + 13, 15, 5, 0, 0, 7); c.fill();
+      c.strokeStyle = col; c.lineWidth = 2.5; c.beginPath(); c.ellipse(u.x, u.y + 13, 15, 5, 0, 0, 7); c.stroke();
+      const bob = Math.sin(g.t * 8 + u.x) * 1.5;
+      if (u.img.complete) c.drawImage(u.img, u.x - 23, u.y - 28 + bob, 46, 40);
+      hpBar(c, u.x, u.y - 31, 30, u.hp / u.max, col);
     }
     for (const p of g.projs) {
-      c.fillStyle = p.color;
-      c.beginPath(); c.arc(p.x, p.y, 5, 0, 7); c.fill();
+      if (p.kind === 'flecha') {
+        const t = p.target, a = Math.atan2(t.y - p.y, t.x - p.x);
+        c.save(); c.translate(p.x, p.y); c.rotate(a);
+        c.strokeStyle = '#5a3820'; c.lineWidth = 2; c.beginPath(); c.moveTo(-9, 0); c.lineTo(5, 0); c.stroke();
+        c.fillStyle = '#c9d1d8'; c.beginPath(); c.moveTo(8, 0); c.lineTo(3, -3); c.lineTo(3, 3); c.fill();
+        c.fillStyle = '#ffffff'; c.fillRect(-10, -2, 3, 4);
+        c.restore();
+      } else if (p.kind === 'bala') {
+        c.fillStyle = '#2c2c34'; c.beginPath(); c.arc(p.x, p.y, 5.5, 0, 7); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.arc(p.x - 1.5, p.y - 1.5, 1.8, 0, 7); c.fill();
+      } else {
+        c.fillStyle = p.color; c.globalAlpha = 0.35; c.beginPath(); c.arc(p.x, p.y, 8, 0, 7); c.fill();
+        c.globalAlpha = 1; c.beginPath(); c.arc(p.x, p.y, 4.5, 0, 7); c.fill();
+      }
     }
     c.textAlign = 'center';
     for (const f of g.fx) {
       c.globalAlpha = Math.min(1, f.t * 2);
       c.font = `700 ${f.size || 14}px Fredoka, sans-serif`;
+      c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.85)';
+      c.strokeText(f.text, f.x, f.y);
       c.fillStyle = f.color || '#3b2a1a';
       c.fillText(f.text, f.x, f.y);
     }
     c.globalAlpha = 1;
-    const left = Math.max(0, TIME - g.t);
-    c.fillStyle = 'rgba(59,42,26,.75)'; c.fillRect(W / 2 - 40, 4, 80, 24);
-    c.fillStyle = left < 30 ? '#ffb38a' : '#fff'; c.font = '700 16px Fredoka, sans-serif';
-    c.fillText(`${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, W / 2, 22);
+    // marcador: tiempo, elixir x2 y coronas
+    const left = g.overtime ? Math.max(0, TIME + OVERTIME - g.t) : Math.max(0, TIME - g.t);
+    c.fillStyle = 'rgba(30,20,12,.8)'; c.fillRect(W / 2 - 46, 4, 92, 26);
+    c.fillStyle = g.overtime ? '#ff8a7a' : left < 30 ? '#ffb38a' : '#fff'; c.font = '700 16px Fredoka, sans-serif';
+    c.fillText(`${g.overtime ? '⏱ ' : ''}${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, W / 2, 23);
+    if (g.t >= DOUBLE_AT) { c.fillStyle = '#d08cff'; c.font = '700 11px Fredoka, sans-serif'; c.fillText('ELIXIR x2', W / 2, 42); }
+    c.font = '700 15px Fredoka, sans-serif';
+    c.fillStyle = 'rgba(30,20,12,.75)'; c.fillRect(6, MID - 52, 40, 22); c.fillRect(6, MID + 30, 40, 22);
+    c.fillStyle = '#ff8a7a'; c.fillText('👑' + crownsOf(g, 'foe'), 26, MID - 36);
+    c.fillStyle = '#8fd3ff'; c.fillText('👑' + crownsOf(g, 'me'), 26, MID + 46);
     c.textAlign = 'left';
   }
 
